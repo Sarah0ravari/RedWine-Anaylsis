@@ -1,6 +1,6 @@
 # RedWine-Anaylsis
  
- This is a project particularly for my machine learning class Comp 442 at Csun , I used Kaggle’s Red Wine Quality dataset to build various classification models to predict whether a particular red wine is “good quality” or not. Each wine in this dataset is given a “quality” score between 0 and 10. For the purpose of this project, I converted the output to a binary output where each wine is either “good quality” (a score of 7 or higher) or not (a score below 7). The quality of a wine is determined by 11 input variables:
+ This is a project particularly for our machine learning class Comp 442 at Csun. Our goal is to use R and Python to demonstate Red Wine Quality dataset to build various classification models to predict whether a particular red wine is “good quality” or not. Each wine in this dataset is given a “quality” score between 0 and 10. For the purpose of this project, I converted the output to a binary output where each wine is either “good quality” (a score of 7 or higher) or not (a score below 7). The quality of a wine is determined by 11 input variables:
 Fixed acidity
 Volatile acidity
 Citric acid
