@@ -1,39 +1,54 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.model_selection import train_test_split, cross_val_score, RandomizedSearchCV
+from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.naive_bayes   import GaussianNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors  import KNeighborsClassifier
+from sklearn.svm   import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neural_network  import MLPClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble   import RandomForestClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 %matplotlib inline
 
+
 import warnings
 warnings.simplefilter("ignore")
 
-# read from a regular csv file
-data = pd.read_csv("../input/winequality-red.csv")
+# read from file
+data = pd.read_csv("redwine.csv")
 
-data.head(10)
+#drop white wine
+data.drop(data.loc[data['type']=="white"].index, inplace=True)
+data = data.drop('type', axis=1)
 
-data.tail()
-data.info()
+print(data.info());
 
+#print unique values
 print("Number of unique values in each column:\n")
 for i in data.columns:
     print(i, len(data[i].unique()))
     
-#Create a binary quality column 
-#bad: quality < 6.5
-#good: quality > 6.5
     
+#create binary labled data    
+data['bin_quality'] = pd.cut(data['quality'], bins=[0, 6.5, 10], labels=["bad", "good"])
     
-    data['bin_quality'] = pd.cut(data['quality'], bins=[0, 6.5, 10], labels=["bad", "good"])
-    
-    data.head(10)
-    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(14, 10))
+data.head(10)
+fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(14, 10))
 
 data_length = len(data)
 quality_percentage = [100 * i / data_length for i in data["quality"].value_counts()]
 bin_quality_percentage = [100 * i / data_length for i in data["bin_quality"].value_counts()]
 
+#heat map
 sns.countplot("quality", data=data, ax=ax[0, 0])
 sns.countplot("bin_quality", data=data, ax=ax[0, 1]);
 
@@ -43,77 +58,12 @@ ax[1, 0].set_xlabel("quality")
 sns.barplot(x=data["bin_quality"].unique(), y=bin_quality_percentage, ax=ax[1, 1])
 ax[1, 1].set_xlabel("bin_quality")
 
-for i in range(2):
-    ax[1, i].set_ylabel("The percentage of the total number")
-    ax[1, i].set_yticks(range(0, 101, 10))
-    ax[1, i].set_yticklabels([str(i) + "%" for i in range(0, 101, 10)])
-    for j in range(2):
-        ax[i, j].yaxis.grid()
-        ax[i, j].set_axisbelow(True)
+
         
-        
-        #Correlation heatmap
-        plt.figure(figsize=[9, 9])
-sns.heatmap(data.corr(), xticklabels=data.columns[:-1], yticklabels=data.columns[:-1], 
-
-            square=True, cmap="Spectral_r", center=0);
-            
-            
-            #Dependence of quality on different parameters
-          #  The function takes on the input column name and restrictions on the y axis. 
-#  Next, the function builds a histogram of the distribution of the values 
-#  of this column, a histogram of the dependence of the two types 
-# of quality to the column passed as a parameter.
-
-def drawing_two_barplots(column, ylims):
-    fig = plt.figure(figsize=(14, 12))
-    gs = gridspec.GridSpec(2, 2)
-    ax0 = fig.add_subplot(gs[0, :])
-    ax1 = fig.add_subplot(gs[1, 0])
-    ax2 = fig.add_subplot(gs[1, 1])
-    
-    sns.distplot(data[data.columns[column]], kde=False, ax=ax0)
-    sns.barplot("quality", data.columns[column], data=data, ax=ax1)
-    sns.barplot("bin_quality", data.columns[column], data=data, ax=ax2)
-    ax1.set_ylim(ylims[0], ylims[1])
-    ax2.set_ylim(ylims[0], ylims[1])
-    ax1.set_yticks(np.linspace(ylims[0], ylims[1], 11))
-    ax2.set_yticks(np.linspace(ylims[0], ylims[1], 11))
-    ax1.yaxis.grid()
-    ax2.yaxis.grid()
-    ax1.set_axisbelow(True)
-    ax2.set_axisbelow(True)
-    drawing_two_barplots(0, [0, 10])
-    
-    
-    drawing_two_barplots(1, [0, 1.2])
-    
-    drawing_two_barplots(3, [0, 3.6])
-    
-    drawing_two_barplots(4, [0, 0.18])
-    
-    drawing_two_barplots(5, [0, 20])
-    
-    #The use of machine learning for classification 
-#Import libraries: sklearn and lightgbm 
+plt.figure(figsize=[15, 15])
+sns.heatmap(data.corr(), xticklabels=data.columns[:-1], yticklabels=data.columns[:-1], square=True, cmap="Spectral_r", center=0);
 
 
-from sklearn.model_selection import train_test_split, cross_val_score, RandomizedSearchCV
-from sklearn.preprocessing import StandardScaler, normalize
-
-from sklearn.naive_bayes           import GaussianNB
-from sklearn.linear_model          import LogisticRegression
-from sklearn.neighbors             import KNeighborsClassifier
-from sklearn.svm                   import SVC
-from sklearn.tree                  import DecisionTreeClassifier
-from sklearn.neural_network        import MLPClassifier
-from sklearn.ensemble              import ExtraTreesClassifier
-from sklearn.ensemble              import RandomForestClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-
-from lightgbm import LGBMClassifier
-FEATURES = slice(0,-2, 1)
 
 #A set of classifiers
 
@@ -123,8 +73,7 @@ model_names = ['LogisticRegression',
                'MLPClassifier',
                'ExtraTreesClassifier',
                'RandomForestClassifier',
-               'LinearDiscriminantAnalysis',
-               'LGBMClassifier']
+               'LinearDiscriminantAnalysis']
 
 classifiers = [LogisticRegression, 
                KNeighborsClassifier, 
@@ -132,24 +81,14 @@ classifiers = [LogisticRegression,
                MLPClassifier, 
                ExtraTreesClassifier,#randomize
                RandomForestClassifier, 
-                LinearDiscriminantAnalysis, 
-               LGBMClassifier] 
-               
-#  This function takes an instance of the model, data and labels as input, 
-#  and there is an optional parameter that indicates the number of splits (rounds) to validate. 
-#  The function returns the average value of cross-validation, as well as the standard deviation.
+                LinearDiscriminantAnalysis] 
 
 def cross_val_mean_std(clsf, data, labels, cv=5):
     cross_val = cross_val_score(clsf, data, labels, cv=cv)
     cross_val_mean = cross_val.mean() * 100
     cross_val_std = cross_val.std() * 100
     return round(cross_val_mean, 3), round(cross_val_std, 3)
-    
-    #  This function takes the type of training model, training and test data, 
-#  and parameters for that model, if any, as input. 
-#  The function returns the already trained model, which we can use 
-#  if necessary, as well as a dictionary with the 
-#  results of cross-validation of training and test data.
+
 
 def train_and_validate_model(model, train, train_labels, test, test_labels, parameters=None):
     
@@ -162,13 +101,9 @@ def train_and_validate_model(model, train, train_labels, test, test_labels, para
     train_valid = cross_val_mean_std(model, train, train_labels)
     test_valid = cross_val_mean_std(model, test, test_labels)
         
-    res_of_valid = {"train_mean": train_valid[0], "train_std": train_valid[1],
-                    "test_mean":  test_valid[0],  "test_std":  test_valid[1]}
-                    return res_of_valid, model
-#--------------------------------------------------------------------------                    
-#  This function takes a dictionary derived from the work of a past function 
-#  that contains a cross-validation result for one or more models and 
-#  creates a Pandas table (which returns), optionally adding postfix to the column names.
+    res_of_valid = {"train_mean": train_valid[0], "train_std": train_valid[1], "test_mean":  test_valid[0],  "test_std":  test_valid[1]}
+    return res_of_valid, model
+
 
 def create_table_with_scores(res_of_valid, postfix=""):
     if not hasattr(res_of_valid["test_std"], "len"):
@@ -182,14 +117,6 @@ def create_table_with_scores(res_of_valid, postfix=""):
                           "Train std score" + postfix:  res_of_valid["train_std"]}, 
                           index=index)
     return table
-    
-    
-#  This function takes a list of Pandas tables that are created by the function above, 
-#  then it takes a list of names in text format (the length of the lists must match), 
-#  there is an optional argument - the number of the column to sort, if necessary.
-#  Returns one large table that consists of a list of tables that the function has accepted, 
-#  as well as a new column with model names from the second argument. 
-#  If the third parameter was specified, the function returns the table with sorting.
 
 def table_of_results(model_results, model_names=None, col_sort_by=None):
     res = model_results[0]
@@ -205,32 +132,41 @@ def table_of_results(model_results, model_names=None, col_sort_by=None):
         res = res.sort_values(by=sort_by, ascending=False)
     res = res.reset_index(drop=True)
     return res
-    
-    
-#  This function takes in a large table from the previous function as well 
-#  as column numbers to draw a scatter chart. 
-#  This function is used to draw cross-validation results from training and test data
-#  and compare different models or the same models with different parameters.
 
-def graph_for_the_results_table(table, col_x, col_y, col_style):
-    x = table.columns[col_x]
-    y = table.columns[col_y]
-    style = table.columns[col_style]
-    plt.figure(figsize=[8, 8])
-    min_lim = min(min(table[x]), min(table[y]))
-    max_lim = max(max(table[x]), max(table[y]))
-    ax = sns.scatterplot(x, y, style, style=style, data=table, s=100)
-    ax.set_xlim(min_lim - 0.01 * max_lim, max_lim + 0.01 * max_lim)
-    ax.set_ylim(min_lim - 0.01 * max_lim, max_lim + 0.01 * max_lim)
-    ax.grid()
-    ax.set_axisbelow(True)
+def tuning_models(model, params, train, train_labels, 
+                                 test, test_labels, postfix="", iterations=50, cv=5):
     
+    model_1 = model()
+    random_search = RandomizedSearchCV(model_1, params, iterations, scoring='accuracy', cv=cv)
+    random_search.fit(train, train_labels)
     
+    parameter_set = []
+    mean_test_scores = list(random_search.cv_results_['mean_test_score'])
+    for i in sorted(mean_test_scores, reverse=True):
+        if i > np.mean(mean_test_scores):
+            parameter_set.append(random_search.cv_results_["params"][mean_test_scores.index(i)])
+        
+    params_set_updated = []
+    for i in parameter_set:
+        if i not in params_set_updated:
+            params_set_updated.append(i)
     
+    results = []
+    for i in params_set_updated:
+        res_of_valid, res_model = train_and_validate_model(model, train, train_labels, test, test_labels, parameters=i)
+        print(i)
+        print(res_of_valid)
+        print(confusion_matrix(test_labels,res_model.predict(test)))
+        results.append(create_table_with_scores(res_of_valid, postfix))
+    results_table = table_of_results(results)
     
-    #Training and testing standard models
-    
-    train, test, train_labels, test_labels = train_test_split(data[data.columns[FEATURES]], 
+    return results_table
+
+
+#split test and training sets and labeled sets
+
+FEATURES = slice(0,-2, 1)
+train, test, train_labels, test_labels = train_test_split(data[data.columns[FEATURES]], 
                                                           data[data.columns[-2:]], 
                                                           test_size=0.25, random_state=3)
 
@@ -240,12 +176,16 @@ b_test_labels = np.array(test_labels)[:, 1]
 train_labels = np.array(train_labels)[:, 0].astype(int)
 test_labels = np.array(test_labels)[:, 0].astype(int)
 
-sc = StandardScaler()
-train = sc.fit_transform(train)
-test = sc.fit_transform(test)
+
+#normalize
+scalers = StandardScaler()
+train = scalers.fit_transform(train)
+test = scalers.fit_transform(test)
 
 
 
+
+#do inital test
 classifiers_scores = []
 b_classifiers_scores = []
 
@@ -266,145 +206,136 @@ classifiers_scores = table_of_results(classifiers_scores, model_names, 0)
 b_classifiers_scores = table_of_results(b_classifiers_scores, model_names, 0)
 
 
-#visualization of the resut
-classifiers_scores
-
-graph_for_the_results_table(classifiers_scores, 0, 2, 4)
-
-
-graph_for_the_results_table(classifiers_scores, 1, 3, 4)
-
-#Importance of parameters for each type of classification
-importances = []
-b_importances = []
-
-for clsf, b_clsf in classifiers_importance:
-    if hasattr(clsf, "feature_importances_"):
-        importances.append(clsf.feature_importances_)
-        b_importances.append(b_clsf.feature_importances_)
-
-fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(16, 6))
-fig.suptitle("The average importance of features")
-sns.barplot(list(range(1, 12)), np.mean(importances, axis=0), ax=ax1)
-sns.barplot(list(range(1, 12)), np.mean(b_importances, axis=0), ax=ax2)
-ax1.set_title("quality")
-ax2.set_title("bin_quality")
-ax1.get_yaxis().set_visible(False)
-ax2.get_yaxis().set_visible(False)
-ax1.set_xticklabels(data.columns, rotation=90)
-ax2.set_xticklabels(data.columns, rotation=90);
-
-
-#Configure the models 
-#We will configure 4 models: SVC, ExtraTreesClassifier, RandomForestClassifier, LGBMClassifier, 
-#as they give results above average according to my estimates.
-
-#  This function takes model and parameters to find optimal, training and test data, 
-#  postfix for column names, number of iterations and partitions to cross-validate 
-#  for RandomizedSearchCV.
-#  Returns only the table with the results.
-
-def tuning_models(model, params, train, train_labels, 
-                                 test, test_labels, postfix="", iterations=50, cv=5):
-    
-    model_1 = model()
-    random_search = RandomizedSearchCV(model_1, params, iterations, scoring='accuracy', cv=cv)
-    random_search.fit(train, train_labels)
-    
-    parameter_set = []
-    mean_test_scores = list(random_search.cv_results_['mean_test_score'])
-    for i in sorted(mean_test_scores, reverse=True):
-        if i > np.mean(mean_test_scores):
-            parameter_set.append(random_search.cv_results_["params"][mean_test_scores.index(i)])
-        
-    params_set_updated = []
-    for i in parameter_set:
-    if i not in params_set_updated:
-            params_set_updated.append(i)
-    
-    results = []
-    for i in params_set_updated:
-        res_of_valid, _ = train_and_validate_model(model, train, train_labels, test, test_labels, parameters=i)
-        results.append(create_table_with_scores(res_of_valid, postfix))
-    
-    results_table = table_of_results(results)
-    return results_table
- #-------------------------------------------------------------------   
-    #SVC
-    params = {"kernel": ["rbf", "poly", "linear", "sigmoid"],
+# focus on the 3 stasrt with SVC with both binary and numerically lableled 
+params = {"kernel": ["rbf", "poly", "linear", "sigmoid"],
           "C": np.arange(0.1, 1.5, 0.1), 
           "gamma": list(np.arange(0.1, 1.5, 0.1)) + ["auto"],
           "probability": [True, False],
           "shrinking": [True, False]}
-    svc_res = tuning_models(SVC, params, train, train_labels, 
+print("start svc_res")
+svc_res = tuning_models(SVC, params, train, train_labels, 
                         test, test_labels, " ('quality')", 100)
-
+print("end svc_res")
+print("start b_svc_res")
 b_svc_res = tuning_models(SVC, params, train, b_train_labels, 
                           test, b_test_labels, " ('bin_quality')", 100)
-                          
-                          
-                          
-   #ExtraTreesClassifier and RandomForestClassifier: parameters and tuning 
+print("end b_svc_res")
+
+
+
+#start ExtraTreesClassifier and RandomForestClassifier
    
-   params = {"n_estimators": np.arange(1, 500, 2),
+params = {"n_estimators": np.arange(1, 500, 2),
           "max_depth": list(np.arange(2, 100, 2)) + [None],
           "min_samples_leaf": np.arange(1, 20, 1),
           "min_samples_split": np.arange(2, 20, 2),
           "max_features": ["auto", "log2", None]}
-          
-          extra_res = tuning_models(ExtraTreesClassifier, params, train, train_labels, 
-                          test, test_labels, " ('quality')", 100)
 
+print("start extra_res")
+extra_res = tuning_models(ExtraTreesClassifier, params, train, train_labels, 
+                          test, test_labels, " ('quality')", 100)
+print("end extra_res")
+
+print("start b_extra_res")
 b_extra_res = tuning_models(ExtraTreesClassifier, params, train, b_train_labels, 
                             test, b_test_labels, " ('bin_quality')", 100)
-
+print("end b_extra_res")
+print("start forest_res")
 forest_res = tuning_models(RandomForestClassifier, params, train, train_labels, 
                            test, test_labels, " ('quality')", 100)
-
+print("end forest_res")
+print("start b_forest_res")
 b_forest_res = tuning_models(RandomForestClassifier, params, train, b_train_labels, 
                              test, b_test_labels, " ('bin_quality')", 100)
-                             
-                             
-                             
-                             
- #LGBMClassifier: parameters and tuning 
- params = {"boosting_type": ["gbdt"],
-          "num_leaves": np.arange(2, 100, 2),
-          "max_depth": list(np.arange(2, 100, 2)) + [-1],
-          "learning_rate": [0.001, 0.003, 0.006, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.17, 0.2, 0.3, 0.4],
-          "n_estimators": np.arange(2, 300, 5),
-          "reg_alpha": np.arange(0, 1, 0.1),
-          "reg_lambda": np.arange(0, 1, 0.1)}
-          
- lgb_res = tuning_models(LGBMClassifier, params, train, train_labels, 
-                        test, test_labels, " ('quality')", 100)
+print("end b_forest_res")
 
-b_lgb_res = tuning_models(LGBMClassifier, params, train, b_train_labels, 
-                          test, b_test_labels, " ('bin_quality')", 100);
-                          
-#visulization of the resulits
 
-all_results = table_of_results([svc_res, extra_res, forest_res, lgb_res], 
-                               ["SVC", "ExtraTrees", "RandomForest", "LightGBM"], 0)
+#table of best models, both binary and numeric
+all_results = table_of_results([svc_res, extra_res, forest_res], 
+                               ["SVC", "ExtraTrees", "RandomForest"], 0)
 all_results.head(10)
 
-
-graph_for_the_results_table(all_results, 0, 2, 4)
-
-
-graph_for_the_results_table(all_results, 1, 3, 4)
-
-
-#binary classification 
-b_all_results = table_of_results([b_svc_res, b_extra_res, b_forest_res, b_lgb_res], 
-                                 ["SVC", "ExtraTrees", "RandomForest", "LightGBM"], 0)
+b_all_results = table_of_results([b_svc_res, b_extra_res, b_forest_res], 
+                                 ["SVC", "ExtraTrees", "RandomForest"], 0)
 b_all_results.head(10)
 
 
-graph_for_the_results_table(b_all_results, 0, 2, 4)
-                    
-    
-    
-    
-    
-    
+
+
+#best parameters on the 3 models
+params_of_b_best_random = {"n_estimators": 159,
+          "max_depth": 14,
+          "min_samples_leaf": 2,
+          "min_samples_split": 4,
+          "max_features": "log2"}
+params_of_b_most_tgood_extra = {"n_estimators": 359,
+          "max_depth": 52,
+          "min_samples_leaf": 1,
+          "min_samples_split": 2,
+          "max_features": None}
+
+params_of_b_best_and_tgood_svc = {"kernel": "rbf",
+          "C": 1.1, 
+          "gamma": 0.6,
+          "probability": False,
+          "shrinking": True}
+
+
+res_of_b_best_random, model_of_b_best_random = train_and_validate_model(RandomForestClassifier, train, b_train_labels, test, b_test_labels, params_of_b_best_random)
+
+res_of_b_most_tgood_extra, model_of_b_most_tgood_extra = train_and_validate_model(ExtraTreesClassifier, train, b_train_labels, test, b_test_labels, params_of_b_most_tgood_extra)
+
+res_of_b_best_svc, model_of_b_best_svc = train_and_validate_model(SVC, train, b_train_labels, test, b_test_labels, params_of_b_best_and_tgood_svc)
+
+
+res_of_best_random, model_of_best_random = train_and_validate_model(RandomForestClassifier, train, train_labels, test, test_labels, params_of_b_best_random)
+res_of_most_tgood_extra, model_of_most_tgood_extra = train_and_validate_model(ExtraTreesClassifier, train, train_labels, test, test_labels, params_of_b_most_tgood_extra)
+res_of_best_svc, model_of_best_svc = train_and_validate_model(SVC, train, train_labels, test, test_labels, params_of_b_best_and_tgood_svc)
+
+
+print("\n\nThe best test cv score by means of RandomForestClassifier")
+print(params_of_b_best_random)
+print(res_of_b_best_random)
+print("Results in this confusion matrix")
+print(confusion_matrix(b_test_labels,model_of_b_best_random.predict(test)))
+print(classification_report(b_test_labels, model_of_b_best_random.predict(test)))
+
+
+print("\n\nThe best in terms of true identification of good by means of ExtraTreesClassifier")
+print(params_of_b_most_tgood_extra)
+print(res_of_b_most_tgood_extra)
+print("Results in this confusion matrix")
+print(confusion_matrix(b_test_labels,model_of_b_most_tgood_extra.predict(test)))
+print(classification_report(b_test_labels, model_of_b_most_tgood_extra.predict(test)))
+
+print("\n\nThe best test cv score and best in terms of true identification of good by means of SVC")
+print(params_of_b_best_and_tgood_svc)
+print(res_of_b_best_svc)
+print("Results in this confusion matrix")
+print(confusion_matrix(b_test_labels,model_of_b_best_svc.predict(test)))
+print(classification_report(b_test_labels, model_of_b_best_svc.predict(test)))
+
+print("numeric")
+print("\n\nBest model of numeric labeled data by means of RandomForestClassifier")
+print(params_of_b_best_random)
+print(res_of_best_random)
+print("Results in this confusion matrix")
+print(confusion_matrix(test_labels,model_of_best_random.predict(test)))
+print(mean_squared_error(test_labels, model_of_best_random.predict(test), squared=False))
+print(classification_report(test_labels, model_of_best_random.predict(test)))
+
+print("\n\nBest model of numeric labeled data by means of ExtraTreesClassifier")
+print(params_of_b_most_tgood_extra)
+print(res_of_most_tgood_extra)
+print("Results in this confusion matrix")
+print(confusion_matrix(test_labels,model_of_most_tgood_extra.predict(test)))
+print(mean_squared_error(test_labels, model_of_most_tgood_extra.predict(test), squared=False))
+print(classification_report(test_labels, model_of_most_tgood_extra.predict(test)))
+
+print("\n\nBest model of numeric labeled data by means of SVC")
+print(params_of_b_best_and_tgood_svc)
+print(res_of_best_svc)
+print("Results in this confusion matrix")
+print(confusion_matrix(test_labels,model_of_best_svc.predict(test)))
+print(mean_squared_error(test_labels, model_of_best_svc.predict(test), squared=False))
+print(classification_report(test_labels, model_of_best_svc.predict(test)))
